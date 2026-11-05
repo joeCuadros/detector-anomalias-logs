@@ -1,0 +1,8 @@
+# carpetas de env
+/env
+/myenv
+/venv
+
+# data pesada
+/data/*.csv
+/data/*.parquet
