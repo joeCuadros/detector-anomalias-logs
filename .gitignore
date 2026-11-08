@@ -6,3 +6,6 @@
 # data pesada
 /data/*.csv
 /data/*.parquet
+
+# logs
+detector.log

@@ -1,0 +1,31 @@
+services:
+  juice-shop:
+    image: bkimminich/juice-shop:latest   # antes del experimento, fija el tag exacto (docker compose images)
+    container_name: juice-shop
+    restart: unless-stopped
+    expose:
+      - "3000"                            # solo visible dentro de la red de Docker, no se publica al host
+
+  nginx:
+    image: nginx:stable
+    container_name: nginx-proxy
+    depends_on:
+      - juice-shop
+    ports:
+      - "127.0.0.1:8080:80"               # unica entrada: solo tu maquina
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./logs:/var/log/detector          # aqui nginx escribe detector.log (fuente de verdad)
+
+  detector:
+    build: ./detector                     # usa detector/Dockerfile (pip install -r requirements.txt)
+    container_name: detector
+    depends_on:
+      - nginx
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./logs:/var/log/detector:ro       # solo lectura: el detector nunca escribe el log
+      # - ./models:/app/models:ro         # futuro: aqui van los .pkl entrenados en Colab
+      # -n 0 = solo lineas nuevas. Para reprocesar todo el log (replay) usa: -n +1
+    command: sh -c "tail -F -n 0 /var/log/detector/detector.log | python detector.py"
