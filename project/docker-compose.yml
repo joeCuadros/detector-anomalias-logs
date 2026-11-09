@@ -10,7 +10,7 @@ services:
       - MARIADB_PASSWORD=${DB_PASSWORD}
       - TZ=${TZ}
     volumes:
-      - ./bookstack_db:/var/lib/mysql
+      - bookstack_db:/var/lib/mysql            # volumen de Docker: en una carpeta de Windows InnoDB no crea sus tablas
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
@@ -52,47 +52,26 @@ services:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./logs:/var/log/detector               # aqui nginx escribe detector.log (fuente de verdad)
 
-  ollama:
-    image: ollama/ollama:0.40.15
-    container_name: ollama
-    restart: unless-stopped
-    init: true                                 # cierre limpio de los procesos al hacer docker compose down
-    environment:
-      - OLLAMA_MODEL=${OLLAMA_MODEL}
-      - OLLAMA_KEEP_ALIVE=24h                  # mantiene el modelo cargado entre peticiones
-      - OLLAMA_NUM_PARALLEL=1                  # una consulta a la vez: tiempos comparables
-    volumes:
-      - ./ollama_models:/root/.ollama          # los modelos se descargan una sola vez
-    expose:
-      - "11434"                                # solo visible dentro de la red de Docker
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        ollama serve &
-        until ollama list >/dev/null 2>&1; do sleep 1; done
-        ollama pull $${OLLAMA_MODEL}
-        wait
-    healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep -q \"$${OLLAMA_MODEL}\""]   # sano = modelo ya descargado
-      interval: 10s
-      timeout: 5s
-      retries: 90                              # hasta ~15 min para la primera descarga
-      start_period: 20s
-
+  # El LLM corre en el host con llama-server (acceso directo a la GPU); ver .env.example
   detector:
     build: ./detector                          # usa detector/Dockerfile (pip install -r requirements.txt)
     container_name: detector
     depends_on:
       nginx:
         condition: service_started
-      ollama:
-        condition: service_healthy             # espera a que el modelo este descargado
+    extra_hosts:
+      - "host.docker.internal:host-gateway"    # permite llegar a llama-server en el host
     environment:
       - PYTHONUNBUFFERED=1
-      - OLLAMA_URL=http://ollama:11434
-      - OLLAMA_MODEL=${OLLAMA_MODEL}
+      - MODO=${MODO}
+      - UMBRAL_ML=${UMBRAL_ML}
+      - LLM_URL=${LLM_URL}
+      - LLM_NOMBRE=${LLM_NOMBRE}
     volumes:
       - ./logs:/var/log/detector:ro            # solo lectura: el detector nunca escribe el log
       # - ./models:/app/models:ro              # futuro: aqui van los .pkl entrenados en Colab
       # -n 0 = solo lineas nuevas. Para reprocesar todo el log (replay) usa: -n +1
     command: sh -c "tail -F -n 0 /var/log/detector/detector.log | python detector.py"
+
+volumes:
+  bookstack_db:
