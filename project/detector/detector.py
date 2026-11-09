@@ -82,7 +82,6 @@ def alerta(id_alerta, ip_alerta, modelo, confiabilidad):
         "id_alerta": id_alerta,
         "ip_alerta": ip_alerta,
         "modelo": modelo,
-        "confiabilidad": round(float(confiabilidad) * 100, 2),
     }
     print("[ALERTA DETECTADA]:", json.dumps(alerta_data), flush=True)
 

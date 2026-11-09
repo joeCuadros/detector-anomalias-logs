@@ -2,6 +2,7 @@
 /env
 /myenv
 /venv
+.env
 
 # data pesada
 /data/*.csv
@@ -9,3 +10,7 @@
 
 # logs
 detector.log
+
+# programa
+/project/bookstack_config
+/project/bookstack_db
