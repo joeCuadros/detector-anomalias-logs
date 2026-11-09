@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -10,6 +11,8 @@ from scipy.sparse import csr_matrix, hstack
 import warnings
 
 warnings.filterwarnings("ignore")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "url_ollama_no_encontrado")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "modelo_no_encontrado")
 
 USAR_RESPUESTA = True
 RUTA_MODELS = Path(__file__).resolve().parent / "models"
@@ -107,7 +110,7 @@ def procesar_log(linea):
             )
 
 def escuchar_nginx():
-    print("Esperando logs de nginx... (Ctrl+C para salir)", flush=True)
+    print(f"Esperando logs de nginx... (Ctrl+C para salir) [modelo={OLLAMA_MODEL}]", flush=True)
 
     for linea in iter(sys.stdin.readline, ""):
         linea = linea.strip()

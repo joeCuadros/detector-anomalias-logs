@@ -14,3 +14,4 @@ detector.log
 # programa
 /project/bookstack_config
 /project/bookstack_db
+/project/ollama_models

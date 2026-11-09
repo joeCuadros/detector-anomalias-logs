@@ -52,13 +52,45 @@ services:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./logs:/var/log/detector               # aqui nginx escribe detector.log (fuente de verdad)
 
+  ollama:
+    image: ollama/ollama:0.40.15
+    container_name: ollama
+    restart: unless-stopped
+    init: true                                 # cierre limpio de los procesos al hacer docker compose down
+    environment:
+      - OLLAMA_MODEL=${OLLAMA_MODEL}
+      - OLLAMA_KEEP_ALIVE=24h                  # mantiene el modelo cargado entre peticiones
+      - OLLAMA_NUM_PARALLEL=1                  # una consulta a la vez: tiempos comparables
+    volumes:
+      - ./ollama_models:/root/.ollama          # los modelos se descargan una sola vez
+    expose:
+      - "11434"                                # solo visible dentro de la red de Docker
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        ollama pull $${OLLAMA_MODEL}
+        wait
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q \"$${OLLAMA_MODEL}\""]   # sano = modelo ya descargado
+      interval: 10s
+      timeout: 5s
+      retries: 90                              # hasta ~15 min para la primera descarga
+      start_period: 20s
+
   detector:
     build: ./detector                          # usa detector/Dockerfile (pip install -r requirements.txt)
     container_name: detector
     depends_on:
-      - nginx
+      nginx:
+        condition: service_started
+      ollama:
+        condition: service_healthy             # espera a que el modelo este descargado
     environment:
       - PYTHONUNBUFFERED=1
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL}
     volumes:
       - ./logs:/var/log/detector:ro            # solo lectura: el detector nunca escribe el log
       # - ./models:/app/models:ro              # futuro: aqui van los .pkl entrenados en Colab
