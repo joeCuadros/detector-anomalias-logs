@@ -1,6 +1,8 @@
 import json
 import os
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
@@ -18,6 +20,7 @@ LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "30"))
 MODO = os.getenv("MODO", "hibrida")  # "ml" | "llm" | "hibrida"
 UMBRAL_ML = float(os.getenv("UMBRAL_ML", "0.5"))  # tau: puntaje desde el que la peticion es sospechosa
 MAX_CHARS = 2000  # limite de URI y cuerpo enviados al LLM
+EVENTOS = os.getenv("EVENTOS", "")  # archivo JSONL que lee el panel web; vacio = desactivado
 
 ## Modelos de machine learning
 USAR_RESPUESTA = True
@@ -182,13 +185,39 @@ def alerta(id_alerta, ip_alerta, modelo, explicacion):
     }
     print("[ALERTA DETECTADA]:", json.dumps(alerta_data), flush=True)
 
+# Evento para el panel web: una linea JSON por peticion procesada
+def emitir(r, veredicto, p_ml=None, ms_ml=None, llm=None, ms_llm=None):
+    if not EVENTOS:
+        return
+    evento = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+        "id": r.get("id"), "ip": r.get("ip"), "metodo": r.get("method"), "uri": str(r.get("uri") or "")[:300],
+        "body": str(r.get("body") or "")[:300], "status": r.get("status"), "modo": MODO, "umbral": UMBRAL_ML,
+        "p_ml": p_ml, "ms_ml": ms_ml, "llm": llm, "ms_llm": ms_llm, "llm_nombre": LLM_NOMBRE, "veredicto": veredicto,
+    }
+    try:
+        with open(EVENTOS, "a", encoding="utf-8") as f:
+            f.write(json.dumps(evento, ensure_ascii=False) + "\n")
+    except OSError as e:
+        print(f"[ERROR] No se pudo escribir el evento del panel: {e}", file=sys.stderr, flush=True)
+
+
+def puntaje(resultado):
+    """Mayor probabilidad de ataque entre los modelos activos."""
+    return max((d["probabilidades"][1] for d in resultado.values() if d["probabilidades"]), default=None)
+
+
 # Funciona para procesar log solo con modelos de machine learning
 def procesar_log_solo_ML(linea):
     r = json.loads(linea)
+    t = time.perf_counter()
     X = preprocesar(r)
     resultado = procesar(X)
+    ms_ml = (time.perf_counter() - t) * 1000
     print(f"LOG: {r.get('method')} {r.get('uri')} (id={r.get('id')})", flush=True)
     print(" -> RESULTADO:", json.dumps(resultado), flush=True)
+    es_alerta = any(d["prediccion"] == 1 for d in resultado.values())
+    emitir(r, "alerta" if es_alerta else "legitima", p_ml=puntaje(resultado), ms_ml=ms_ml)
 
     # modelos 
     for nombre, datos in resultado.items():
@@ -207,8 +236,11 @@ def procesar_log_solo_ML(linea):
 def procesar_log_solo_LLM(linea):
     r = json.loads(linea)
     print(f"LOG: {r.get('method')} {r.get('uri')} (id={r.get('id')})", flush=True)
+    t = time.perf_counter()
     resultado = procesar_llm(linea)
+    ms_llm = (time.perf_counter() - t) * 1000
     print(" -> RESULTADO LLM:", json.dumps(resultado, ensure_ascii=False), flush=True)
+    emitir(r, ("no_confirmada" if resultado["tipo_ataque"] == "No confirmado" else "alerta") if resultado["es_alerta"] else "legitima", llm=resultado, ms_llm=ms_llm)
     if resultado["es_alerta"]:
         alerta(
             id_alerta=r.get("id"),
@@ -220,8 +252,10 @@ def procesar_log_solo_LLM(linea):
 # Funciona para procesar log con ML como filtro y LLM como confirmación
 def procesar_log_hibrida(linea):
     r = json.loads(linea)
+    t = time.perf_counter()
     X = preprocesar(r)
     resultado = procesar(X)
+    ms_ml = (time.perf_counter() - t) * 1000
     print(f"LOG: {r.get('method')} {r.get('uri')} (id={r.get('id')})", flush=True)
     print(" -> RESULTADO ML:", json.dumps(resultado), flush=True)
 
@@ -236,10 +270,20 @@ def procesar_log_hibrida(linea):
 
     if not modelos_sospechosos:
         print(" -> ML: legítimo, no pasa al LLM", flush=True)
+        emitir(r, "legitima", p_ml=puntaje(resultado), ms_ml=ms_ml)
         return
 
+    t = time.perf_counter()
     resultado_llm = procesar_llm(linea)
+    ms_llm = (time.perf_counter() - t) * 1000
     print(" -> RESULTADO LLM:", json.dumps(resultado_llm, ensure_ascii=False), flush=True)
+    if not resultado_llm["es_alerta"]:
+        veredicto = "descartada"
+    elif resultado_llm["tipo_ataque"] == "No confirmado":
+        veredicto = "no_confirmada"
+    else:
+        veredicto = "alerta"
+    emitir(r, veredicto, p_ml=puntaje(resultado), ms_ml=ms_ml, llm=resultado_llm, ms_llm=ms_llm)
 
     if resultado_llm["es_alerta"]:
         alerta(
