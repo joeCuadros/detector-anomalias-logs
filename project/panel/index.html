@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detector en vivo</title>
+<style>
+:root {
+  --bg: #f6f6f3; --panel: #ffffff; --tinta: #0b0b0b; --sec: #52514e; --suave: #898781; --borde: #e1e0d9;
+  --azul: #2a78d6; --violeta: #6250d6;
+  --ok: #1a8a5a; --ok-bg: #e5f4ec; --aviso: #a86b00; --aviso-bg: #fbf0d9; --critico: #c8331b; --critico-bg: #fbe5e0;
+  --serio: #b8520f; --serio-bg: #fcebdc; --barra: #e9e8e2; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121211; --panel: #1c1c1a; --tinta: #f1f0ea; --sec: #b9b8b1; --suave: #85847e; --borde: #33322e;
+    --azul: #5b9be6; --violeta: #8f80ec;
+    --ok: #4cc28c; --ok-bg: #16301f; --aviso: #e4ad3c; --aviso-bg: #362a10; --critico: #f0735d; --critico-bg: #3d1a14;
+    --serio: #ef9350; --serio-bg: #3a2312; --barra: #2c2b28;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--tinta); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; }
+.envoltura { max-width: 1280px; margin: 0 auto; padding: 20px 16px 40px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 18px; }
+h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--sec); font-size: 13px; }
+.chips { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.chip { border: 1px solid var(--borde); background: var(--panel); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--sec); }
+.vivo::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: 1px; }
+.vivo.caido::before { background: var(--critico); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; padding: 12px 14px; }
+.kpi .et { color: var(--sec); font-size: 12px; }
+.kpi .v { font-size: 28px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.kpi .n { color: var(--suave); font-size: 12px; }
+.fila { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; margin-bottom: 14px; }
+@media (max-width: 900px) { .fila { grid-template-columns: 1fr; } }
+.caja { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.caja h2 { font-size: 13px; margin: 0 0 12px; color: var(--sec); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.flujo { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; }
+.etapa { flex: 1 1 110px; border: 1px solid var(--borde); border-radius: 8px; padding: 10px; text-align: center; }
+.etapa b { display: block; font-size: 13px; }
+.etapa .c { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.etapa small { color: var(--suave); display: block; font-size: 11.5px; }
+.flecha { align-self: center; color: var(--suave); font-size: 18px; }
+.salidas { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; font-size: 12px; }
+.salidas span { border-radius: 6px; padding: 2px 6px; }
+.ultima { display: none; }
+.ultima.hay { display: block; }
+.ultima .tipo { font-size: 20px; font-weight: 650; color: var(--critico); }
+.ultima .razon { font-size: 15px; margin: 4px 0 10px; }
+.ultima code, td code { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+.ultima .meta { color: var(--sec); font-size: 12px; margin-top: 8px; }
+.vacio { color: var(--suave); }
+.tabla { overflow-x: auto; }
+table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+td.id code { word-break: normal; white-space: nowrap; }
+th { text-align: left; font-weight: 600; color: var(--sec); font-size: 12px; border-bottom: 1px solid var(--borde); padding: 6px 8px; white-space: nowrap; }
+td { border-bottom: 1px solid var(--borde); padding: 7px 8px; vertical-align: top; }
+tr.nueva td { animation: aparece 2.2s ease-out; }
+@keyframes aparece { from { background: color-mix(in srgb, var(--azul) 16%, transparent); } to { background: transparent; } }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.p-legitima { background: var(--ok-bg); color: var(--ok); }
+.p-descartada { background: var(--aviso-bg); color: var(--aviso); }
+.p-alerta { background: var(--critico-bg); color: var(--critico); }
+.p-no_confirmada { background: var(--serio-bg); color: var(--serio); }
+.puntaje { display: flex; align-items: center; gap: 6px; min-width: 120px; }
+.barra { position: relative; flex: 1; height: 6px; border-radius: 3px; background: var(--barra); }
+.barra i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--violeta); }
+.barra u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--tinta); text-decoration: none; }
+.llm { color: var(--sec); font-size: 12.5px; }
+.llm b { color: var(--tinta); font-weight: 600; }
+.pie { color: var(--suave); font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="envoltura">
+  <header>
+    <h1>Detector de ataques HTTP</h1>
+    <span class="sub" id="sub">nginx → XGBoost → LLM local</span>
+    <div class="chips"><span class="chip" id="modo">modo —</span><span class="chip" id="umbral">τ —</span><span class="chip vivo" id="vivo">conectando</span></div>
+  </header>
+
+  <section class="kpis" aria-label="Totales">
+    <div class="kpi"><div class="et">Peticiones analizadas</div><div class="v" id="k-total">0</div><div class="n" id="k-total-n">desde que arrancó el panel</div></div>
+    <div class="kpi"><div class="et">Legítimas según XGBoost</div><div class="v" id="k-leg">0</div><div class="n" id="k-leg-n">no pasan al LLM</div></div>
+    <div class="kpi"><div class="et">Enviadas al LLM</div><div class="v" id="k-env">0</div><div class="n" id="k-env-n">—</div></div>
+    <div class="kpi"><div class="et">Alertas confirmadas</div><div class="v" id="k-ale">0</div><div class="n">con tipo y explicación</div></div>
+    <div class="kpi"><div class="et">Falsas alarmas evitadas</div><div class="v" id="k-des">0</div><div class="n">XGBoost marcó, el LLM descartó</div></div>
+    <div class="kpi"><div class="et">Latencia media</div><div class="v" id="k-lat">—</div><div class="n" id="k-lat-n">XGBoost / LLM</div></div>
+  </section>
+
+  <div class="fila">
+    <section class="caja">
+      <h2>Recorrido de las peticiones</h2>
+      <div class="flujo">
+        <div class="etapa"><b>nginx</b><div class="c" id="f-nginx">0</div><small>registro JSON</small></div>
+        <div class="flecha" aria-hidden="true">→</div>
+        <div class="etapa"><b>XGBoost</b><div class="c" id="f-ml">0</div><small id="f-tau">puntaje ≥ τ</small>
+          <div class="salidas"><span class="p-legitima" id="f-ml-leg">0 legítimas</span><span class="p-descartada" id="f-ml-sos">0 sospechosas</span></div></div>
+        <div class="flecha" aria-hidden="true">→</div>
+        <div class="etapa"><b id="f-llm-nom">LLM</b><div class="c" id="f-llm">0</div><small>confirma o descarta</small>
+          <div class="salidas"><span class="p-alerta" id="f-llm-ale">0 confirmadas</span><span class="p-descartada" id="f-llm-des">0 descartadas</span></div></div>
+        <div class="flecha" aria-hidden="true">→</div>
+        <div class="etapa"><b>Alertas</b><div class="c" id="f-ale">0</div><small>con explicación</small></div>
+      </div>
+    </section>
+    <section class="caja">
+      <h2>Última alerta</h2>
+      <div class="vacio" id="u-vacio">Todavía no hay alertas.</div>
+      <div class="ultima" id="ultima">
+        <div class="tipo" id="u-tipo"></div>
+        <div class="razon" id="u-razon"></div>
+        <code id="u-pet"></code>
+        <div class="meta" id="u-meta"></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="caja">
+    <h2>Peticiones en tiempo real</h2>
+    <div class="tabla">
+      <table>
+        <colgroup><col style="width:72px"><col style="width:76px"><col><col style="width:150px"><col style="width:30%"><col style="width:120px"><col style="width:180px"></colgroup>
+        <thead><tr><th>Hora</th><th>Id</th><th>Petición</th><th>Puntaje XGBoost</th><th>Veredicto del LLM</th><th>Latencia</th><th>Resultado</th></tr></thead>
+        <tbody id="filas"><tr><td colspan="7" class="vacio">Esperando peticiones…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pie">La línea negra en cada barra es el umbral τ: por encima, la petición pasa al LLM. Se actualiza cada segundo.</div>
+  </section>
+</div>
+
+<script>
+if (new URLSearchParams(location.search).get("tema") === "claro") document.documentElement.dataset.theme = "light";
+const ETQ = { legitima: "✓ Legítima", descartada: "↩ Descartada por el LLM", alerta: "⚠ Alerta", no_confirmada: "? No confirmada" };
+const $ = id => document.getElementById(id);
+let vistos = new Set(), primera = true, totalPrevio = -1;
+
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ms = v => v == null ? "—" : v < 10 ? v.toFixed(1) + " ms" : Math.round(v).toLocaleString("es") + " ms";
+const pct = (a, b) => b ? Math.round(a / b * 100) + " %" : "—";
+const hora = ts => { try { return new Date(ts).toLocaleTimeString("es", { hour12: false }); } catch { return ""; } };
+const dec = s => { try { return decodeURIComponent(String(s).replace(/\+/g, " ")); } catch { return s; } };
+
+function fila(e) {
+  const p = e.p_ml, tau = e.umbral ?? 0.5;
+  const punt = p == null ? '<span class="vacio">—</span>' :
+    `<div class="puntaje"><div class="barra"><i style="width:${(p * 100).toFixed(1)}%"></i><u style="left:${tau * 100}%"></u></div><span class="num">${p.toFixed(2)}</span></div>`;
+  const llm = e.llm ? `<div class="llm"><b>${esc(e.llm.tipo_ataque)}</b> · ${esc(e.llm.razon)}</div>` : '<span class="vacio">no se consultó</span>';
+  const lat = e.ms_llm != null ? `${ms(e.ms_ml)} + ${ms(e.ms_llm)}` : ms(e.ms_ml);
+  const limpio = e.body ? dec(e.body).replace(/_token=[^&]*&?/, "") : "";
+  const cuerpo = limpio ? `<br><span class="vacio">cuerpo: ${esc(limpio.slice(0, 90))}</span>` : "";
+  return `<td class="num">${hora(e.ts)}</td><td class="id"><code>${esc(e.id).slice(0, 10)}</code></td>` +
+    `<td><code>${esc(e.metodo)} ${esc(dec(e.uri).slice(0, 110))}</code>${cuerpo}</td><td>${punt}</td><td>${llm}</td>` +
+    `<td class="num">${lat}</td><td><span class="pill p-${e.veredicto}">${ETQ[e.veredicto] || e.veredicto}</span></td>`;
+}
+
+async function actualizar() {
+  try {
+    const r = await fetch("/api/eventos", { cache: "no-store" });
+    const d = await r.json();
+    $("vivo").textContent = "en vivo"; $("vivo").classList.remove("caido");
+    pintar(d);
+  } catch {
+    $("vivo").textContent = "sin conexión"; $("vivo").classList.add("caido");
+  }
+}
+
+function pintar(d) {
+  const R = d.resumen, ev = d.eventos;
+  const ult = ev[ev.length - 1];
+  if (ult) {
+    $("modo").textContent = "modo " + ult.modo;
+    $("umbral").textContent = "τ = " + ult.umbral;
+    $("sub").textContent = `BookStack · nginx → XGBoost → ${ult.llm_nombre}`;
+    $("f-llm-nom").textContent = ult.llm_nombre;
+    $("f-tau").textContent = `puntaje ≥ ${ult.umbral} pasa al LLM`;
+  }
+  const alertas = R.alerta + R.no_confirmada;
+  $("k-total").textContent = R.total;
+  $("k-leg").textContent = R.legitima;
+  $("k-leg-n").textContent = `${pct(R.legitima, R.total)} del tráfico, sin consultar al LLM`;
+  $("k-env").textContent = R.enviadas_llm;
+  $("k-env-n").textContent = `${pct(R.enviadas_llm, R.total)} del tráfico`;
+  $("k-ale").textContent = alertas;
+  $("k-des").textContent = R.descartada;
+  $("k-lat").textContent = R.ms_llm != null ? ms(R.ms_llm) : ms(R.ms_ml);
+  $("k-lat-n").textContent = `XGBoost ${ms(R.ms_ml)} · LLM ${ms(R.ms_llm)}`;
+  $("f-nginx").textContent = R.total;
+  $("f-ml").textContent = R.total;
+  $("f-ml-leg").textContent = `${R.legitima} legítimas`;
+  $("f-ml-sos").textContent = `${R.enviadas_llm} sospechosas`;
+  $("f-llm").textContent = R.enviadas_llm;
+  $("f-llm-ale").textContent = `${alertas} confirmadas`;
+  $("f-llm-des").textContent = `${R.descartada} descartadas`;
+  $("f-ale").textContent = alertas;
+
+  const a = [...ev].reverse().find(e => e.veredicto === "alerta" || e.veredicto === "no_confirmada");
+  if (a) {
+    $("u-vacio").style.display = "none"; $("ultima").classList.add("hay");
+    $("u-tipo").textContent = "⚠ " + a.llm.tipo_ataque;
+    $("u-razon").textContent = a.llm.razon;
+    $("u-pet").textContent = `${a.metodo} ${dec(a.uri)}`;
+    $("u-meta").textContent = `id ${a.id} · IP ${a.ip} · XGBoost ${a.p_ml != null ? (a.p_ml * 100).toFixed(1) + " %" : "—"} · LLM ${ms(a.ms_llm)} · ${hora(a.ts)}`;
+  }
+
+  const cuerpo = $("filas");
+  if (!ev.length || d.total === totalPrevio) return;
+  totalPrevio = d.total;
+  const html = [...ev].reverse().slice(0, 60).map(e => {
+    const clave = e.ts + e.id;
+    const nueva = !primera && !vistos.has(clave);
+    vistos.add(clave);
+    return `<tr class="${nueva ? "nueva" : ""}">${fila(e)}</tr>`;
+  }).join("");
+  cuerpo.innerHTML = html;
+  primera = false;
+}
+
+actualizar();
+setInterval(actualizar, 1000);
+</script>
+</body>
+</html>

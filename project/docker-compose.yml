@@ -67,11 +67,28 @@ services:
       - UMBRAL_ML=${UMBRAL_ML}
       - LLM_URL=${LLM_URL}
       - LLM_NOMBRE=${LLM_NOMBRE}
+      - EVENTOS=/app/eventos/eventos.jsonl     # lo lee el panel web; quita la linea para desactivarlo
     volumes:
       - ./logs:/var/log/detector:ro            # solo lectura: el detector nunca escribe el log
+      - ./panel_datos:/app/eventos             # eventos para el panel
       # - ./models:/app/models:ro              # futuro: aqui van los .pkl entrenados en Colab
       # -n 0 = solo lineas nuevas. Para reprocesar todo el log (replay) usa: -n +1
     command: sh -c "tail -F -n 0 /var/log/detector/detector.log | python detector.py"
+
+  # Panel web en vivo: http://127.0.0.1:8090
+  panel:
+    image: python:3.12-slim
+    container_name: panel
+    restart: unless-stopped
+    working_dir: /panel
+    command: python servidor.py
+    environment:
+      - EVENTOS=/datos/eventos.jsonl
+    volumes:
+      - ./panel:/panel:ro
+      - ./panel_datos:/datos:ro
+    ports:
+      - "127.0.0.1:8090:8090"                  # solo tu maquina
 
 volumes:
   bookstack_db:
