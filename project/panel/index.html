@@ -6,219 +6,733 @@
 <title>Detector en vivo</title>
 <style>
 :root {
-  --bg: #f6f6f3; --panel: #ffffff; --tinta: #0b0b0b; --sec: #52514e; --suave: #898781; --borde: #e1e0d9;
-  --azul: #2a78d6; --violeta: #6250d6;
-  --ok: #1a8a5a; --ok-bg: #e5f4ec; --aviso: #a86b00; --aviso-bg: #fbf0d9; --critico: #c8331b; --critico-bg: #fbe5e0;
-  --serio: #b8520f; --serio-bg: #fcebdc; --barra: #e9e8e2; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+  --bg: #f2f2ef; --surface: #ffffff; --surface-2: #f8f8f6; --code: #f1f0ec;
+  --border: #e3e2dc; --border-2: #cfcec6;
+  --text: #0b0b0b; --text-2: #52514e; --text-3: #85847e;
+  --xgb: #6250d6; --llm: #2a78d6; --neutro: #9a9992; --ghost: #dddcd5;
+  --good: #0ca30c; --warn: #fab219; --serious: #ec835a; --crit: #d03b3b;
+  --good-ink: #0a7a0a; --warn-ink: #8a5d00; --serious-ink: #a84e22; --crit-ink: #b42f2f;
+  --sombra: 0 1px 2px rgba(20, 20, 15, .04), 0 4px 16px rgba(20, 20, 15, .04);
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Code", "Cascadia Mono", ui-monospace, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #121211; --panel: #1c1c1a; --tinta: #f1f0ea; --sec: #b9b8b1; --suave: #85847e; --borde: #33322e;
-    --azul: #5b9be6; --violeta: #8f80ec;
-    --ok: #4cc28c; --ok-bg: #16301f; --aviso: #e4ad3c; --aviso-bg: #362a10; --critico: #f0735d; --critico-bg: #3d1a14;
-    --serio: #ef9350; --serio-bg: #3a2312; --barra: #2c2b28;
+    color-scheme: dark;
+    --bg: #0d0e10; --surface: #16171a; --surface-2: #1b1c20; --code: #0f1013;
+    --border: #26272c; --border-2: #3a3b41;
+    --text: #f0efec; --text-2: #c3c2b7; --text-3: #8b8a84;
+    --xgb: #9085e9; --llm: #3987e5; --neutro: #6f6e69; --ghost: #2a2b30;
+    --good-ink: #3dbd3d; --warn-ink: #fab219; --serious-ink: #ec835a; --crit-ink: #ec6b6b;
+    --sombra: 0 1px 2px rgba(0, 0, 0, .3);
   }
 }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0e10; --surface: #16171a; --surface-2: #1b1c20; --code: #0f1013;
+  --border: #26272c; --border-2: #3a3b41;
+  --text: #f0efec; --text-2: #c3c2b7; --text-3: #8b8a84;
+  --xgb: #9085e9; --llm: #3987e5; --neutro: #6f6e69; --ghost: #2a2b30;
+  --good-ink: #3dbd3d; --warn-ink: #fab219; --serious-ink: #ec835a; --crit-ink: #ec6b6b;
+  --sombra: 0 1px 2px rgba(0, 0, 0, .3);
+}
+
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--tinta); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; }
-.envoltura { max-width: 1280px; margin: 0 auto; padding: 20px 16px 40px; }
-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 18px; }
-h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
-.sub { color: var(--sec); font-size: 13px; }
-.chips { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.chip { border: 1px solid var(--borde); background: var(--panel); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--sec); }
-.vivo::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: 1px; }
-.vivo.caido::before { background: var(--critico); }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
-.kpi { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; padding: 12px 14px; }
-.kpi .et { color: var(--sec); font-size: 12px; }
-.kpi .v { font-size: 28px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.15; }
-.kpi .n { color: var(--suave); font-size: 12px; }
-.fila { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; margin-bottom: 14px; }
-@media (max-width: 900px) { .fila { grid-template-columns: 1fr; } }
-.caja { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; padding: 14px 16px; min-width: 0; }
-.caja h2 { font-size: 13px; margin: 0 0 12px; color: var(--sec); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.flujo { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; }
-.etapa { flex: 1 1 110px; border: 1px solid var(--borde); border-radius: 8px; padding: 10px; text-align: center; }
-.etapa b { display: block; font-size: 13px; }
-.etapa .c { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.etapa small { color: var(--suave); display: block; font-size: 11.5px; }
-.flecha { align-self: center; color: var(--suave); font-size: 18px; }
-.salidas { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; font-size: 12px; }
-.salidas span { border-radius: 6px; padding: 2px 6px; }
-.ultima { display: none; }
-.ultima.hay { display: block; }
-.ultima .tipo { font-size: 20px; font-weight: 650; color: var(--critico); }
-.ultima .razon { font-size: 15px; margin: 4px 0 10px; }
-.ultima code, td code { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
-.ultima .meta { color: var(--sec); font-size: 12px; margin-top: 8px; }
-.vacio { color: var(--suave); }
-.tabla { overflow-x: auto; }
-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
-td.id code { word-break: normal; white-space: nowrap; }
-th { text-align: left; font-weight: 600; color: var(--sec); font-size: 12px; border-bottom: 1px solid var(--borde); padding: 6px 8px; white-space: nowrap; }
-td { border-bottom: 1px solid var(--borde); padding: 7px 8px; vertical-align: top; }
-tr.nueva td { animation: aparece 2.2s ease-out; }
-@keyframes aparece { from { background: color-mix(in srgb, var(--azul) 16%, transparent); } to { background: transparent; } }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+.envoltura { max-width: 1320px; margin: 0 auto; padding: 20px 16px 48px; }
+
+/* ---------- cabecera */
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 20px; }
+.marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.logo { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex: none;
+  background: linear-gradient(140deg, var(--xgb), var(--llm)); color: #fff; }
+h1 { font: 650 19px/1.2 var(--display); margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--text-2); font-size: 12.5px; margin-top: 2px; overflow-wrap: anywhere; }
+.controles { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
+.chip b { color: var(--text); font-weight: 600; }
+.punto { width: 8px; height: 8px; border-radius: 50%; background: var(--good); position: relative; }
+.punto::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--good); opacity: 0; animation: latido 2s ease-out infinite; }
+.caido .punto { background: var(--crit); }
+.caido .punto::after { display: none; }
+@keyframes latido { 0% { transform: scale(.4); opacity: .7; } 100% { transform: scale(1.4); opacity: 0; } }
+.btn-icono { width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); display: grid; place-items: center; cursor: pointer; color: var(--text-2); }
+.btn-icono:hover { color: var(--text); border-color: var(--border-2); }
+.btn-icono:focus-visible, .filtro:focus-visible, .previa:focus-visible, tr.ev:focus-visible { outline: 2px solid var(--llm); outline-offset: 2px; }
+
+/* ---------- tarjetas */
+.caja { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: var(--sombra); min-width: 0; }
+.caja-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.caja h2 { font: 600 14.5px/1.3 var(--display); margin: 0; }
+.caja .nota { color: var(--text-3); font-size: 12px; }
+
+/* ---------- KPIs */
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 1100px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px 15px; box-shadow: var(--sombra); position: relative; overflow: hidden; min-width: 0; }
+.kpi .et { color: var(--text-2); font-size: 12.5px; display: flex; align-items: center; gap: 7px; }
+.kpi .et i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.kpi .v { font: 650 32px/1.1 var(--display); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin: 8px 0 6px; }
+.kpi .n { color: var(--text-3); font-size: 12px; }
+.medidor { height: 4px; border-radius: 2px; background: var(--ghost); margin: 0 0 8px; overflow: hidden; }
+.medidor i { display: block; height: 100%; border-radius: 2px; transition: width .6s cubic-bezier(.2, .7, .2, 1); }
+.kpi.critico { border-color: color-mix(in srgb, var(--crit) 45%, var(--border)); }
+.kpi.critico::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--crit); }
+.lat { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 10px; }
+.lat span { color: var(--text-2); font-size: 12.5px; }
+.lat b { font: 650 19px/1.25 var(--display); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ---------- rejilla principal */
+.rejilla { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+@media (max-width: 980px) { .rejilla { grid-template-columns: 1fr; } }
+.pila { display: grid; gap: 16px; min-width: 0; }
+
+/* ---------- flujo (Sankey) */
+.lienzo { position: relative; }
+.lienzo svg { display: block; width: 100%; height: auto; overflow: visible; }
+.lienzo .capa { position: absolute; inset: 0; pointer-events: none; }
+.nodo { rx: 3; }
+.n-neutro { fill: var(--neutro); } .n-xgb { fill: var(--xgb); } .n-llm { fill: var(--llm); }
+.n-crit { fill: var(--crit); } .n-warn { fill: var(--warn); } .n-good { fill: var(--good); } .n-ghost { fill: var(--ghost); }
+.banda { opacity: .26; transition: opacity .15s; }
+.banda:hover { opacity: .5; }
+.banda.n-ghost { opacity: 1; }
+.et-nodo { fill: var(--text); font: 600 13px var(--display); }
+.et-num { fill: var(--text); font: 650 13px var(--display); font-variant-numeric: tabular-nums; }
+.et-sub { fill: var(--text-3); font: 400 11.5px var(--sans); }
+.particula { filter: drop-shadow(0 0 4px currentColor); }
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; color: var(--text-2); font-size: 12px; }
+.leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.leyenda i { width: 10px; height: 10px; border-radius: 3px; }
+
+/* ---------- gráfico de puntajes */
+#grafico { position: relative; height: 200px; }
+#grafico svg { display: block; overflow: visible; }
+.zona { fill: var(--xgb); opacity: .06; }
+.rejilla-l { stroke: var(--border); stroke-width: 1; }
+.tau { stroke: var(--text-2); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.eje { fill: var(--text-3); font: 11px var(--sans); font-variant-numeric: tabular-nums; }
+.eje-z { fill: var(--text-3); font: 600 10.5px var(--sans); letter-spacing: .04em; text-transform: uppercase; }
+.tallo { stroke: var(--border-2); stroke-width: 1.5; }
+.dot { stroke: var(--surface); stroke-width: 2; transition: r .12s; }
+.dot.on { r: 7.5; }
+.d-legitima { fill: var(--good); } .d-descartada { fill: var(--warn); } .d-alerta { fill: var(--crit); } .d-no_confirmada { fill: var(--serious); }
+
+/* ---------- alerta */
+.alerta-vacia { display: grid; place-items: center; text-align: center; color: var(--text-3); min-height: 220px; gap: 8px; }
+.alerta-vacia svg { color: var(--good); }
+.al-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.al-tipo { font: 650 22px/1.2 var(--display); letter-spacing: -0.01em; color: var(--crit-ink); margin: 0 0 10px; overflow-wrap: anywhere; }
+.al-razon { margin: 0 0 14px; padding: 10px 14px; border-left: 3px solid var(--crit); background: color-mix(in srgb, var(--crit) 7%, transparent); border-radius: 0 8px 8px 0; font-size: 14.5px; }
+.peticion { display: flex; gap: 8px; align-items: flex-start; background: var(--code); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; margin-bottom: 14px; }
+.peticion code { overflow-wrap: anywhere; color: var(--text); }
+.meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.meta div { min-width: 0; }
+.meta span { display: block; color: var(--text-3); font-size: 11.5px; }
+.meta b { font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.previas { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.previas h3 { font: 600 12px var(--sans); color: var(--text-3); margin: 0 0 8px; text-transform: uppercase; letter-spacing: .05em; }
+.previa { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: none; padding: 7px 8px; margin: 0 -8px; border-radius: 8px; cursor: pointer; }
+.previa:hover, .previa.sel { background: var(--surface-2); }
+.previa .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 13px; }
+.previa .h { color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.previa i { width: 8px; height: 8px; border-radius: 50%; background: var(--crit); flex: none; }
+
+/* ---------- etiquetas */
+.pill { display: inline-flex; align-items: center; gap: 5px; height: 24px; border-radius: 999px; padding: 0 10px 0 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.pill svg { flex: none; }
+.p-legitima { background: color-mix(in srgb, var(--good) 13%, transparent); color: var(--good-ink); }
+.p-descartada { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn-ink); }
+.p-alerta { background: color-mix(in srgb, var(--crit) 13%, transparent); color: var(--crit-ink); }
+.p-no_confirmada { background: color-mix(in srgb, var(--serious) 16%, transparent); color: var(--serious-ink); }
+.metodo { display: inline-block; font: 700 10.5px/18px var(--mono); padding: 0 6px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); flex: none; letter-spacing: .02em; }
+.metodo.m-POST { color: var(--llm); } .metodo.m-TRACE, .metodo.m-PUT, .metodo.m-DELETE { color: var(--serious-ink); }
+
+/* ---------- tabla */
+.filtros { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; flex-wrap: wrap; }
+.filtro { border: 0; background: none; border-radius: 7px; padding: 5px 11px; font-size: 12.5px; color: var(--text-2); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.filtro:hover { color: var(--text); }
+.filtro.on { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.filtro .c { font-variant-numeric: tabular-nums; color: var(--text-3); font-weight: 500; }
+.tabla { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+table { width: 100%; min-width: 980px; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+th { text-align: left; font-weight: 600; color: var(--text-3); font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr.ev { cursor: pointer; }
+tr.ev:hover td { background: var(--surface-2); }
+tr.ev.abierta td { background: var(--surface-2); border-bottom-color: transparent; }
+tr.nueva td { animation: aparece 2.4s ease-out; }
+@keyframes aparece { from { background: color-mix(in srgb, var(--llm) 15%, transparent); } to { background: transparent; } }
 .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.p-legitima { background: var(--ok-bg); color: var(--ok); }
-.p-descartada { background: var(--aviso-bg); color: var(--aviso); }
-.p-alerta { background: var(--critico-bg); color: var(--critico); }
-.p-no_confirmada { background: var(--serio-bg); color: var(--serio); }
-.puntaje { display: flex; align-items: center; gap: 6px; min-width: 120px; }
-.barra { position: relative; flex: 1; height: 6px; border-radius: 3px; background: var(--barra); }
-.barra i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--violeta); }
-.barra u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--tinta); text-decoration: none; }
-.llm { color: var(--sec); font-size: 12.5px; }
-.llm b { color: var(--tinta); font-weight: 600; }
-.pie { color: var(--suave); font-size: 12px; margin-top: 10px; }
+.tenue { color: var(--text-3); }
+.pet { display: flex; gap: 8px; align-items: flex-start; min-width: 0; }
+.pet code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; min-width: 0; }
+.pet .cuerpo { color: var(--text-3); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.puntaje { display: flex; align-items: center; gap: 8px; padding-top: 4px; }
+.barra { position: relative; flex: 1; height: 6px; border-radius: 3px; background: var(--ghost); }
+.barra i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--xgb); }
+.barra u { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--text); text-decoration: none; }
+.explica { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--text-2); }
+.explica b { color: var(--text); font-weight: 600; }
+.chev { transition: transform .15s; color: var(--text-3); }
+tr.abierta .chev { transform: rotate(90deg); }
+tr.detalle td { background: var(--surface-2); padding: 4px 10px 16px 46px; }
+.det { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 20px; }
+.det .ancho { grid-column: 1 / -1; }
+.det span { display: block; color: var(--text-3); font-size: 11.5px; margin-bottom: 2px; }
+.det code { overflow-wrap: anywhere; }
+.vacio-t { color: var(--text-3); text-align: center; padding: 36px 10px; }
+.pie { color: var(--text-3); font-size: 12px; margin-top: 14px; display: flex; gap: 6px 18px; flex-wrap: wrap; }
+
+/* ---------- tooltip */
+#tip { position: fixed; z-index: 10; pointer-events: none; max-width: 320px; background: var(--surface); color: var(--text); border: 1px solid var(--border-2);
+  border-radius: 10px; padding: 9px 12px; font-size: 12.5px; box-shadow: 0 8px 24px rgba(0, 0, 0, .16); opacity: 0; transition: opacity .1s; }
+#tip.on { opacity: 1; }
+#tip .tt { font-weight: 600; margin-bottom: 3px; }
+#tip .tl { color: var(--text-2); overflow-wrap: anywhere; }
+
+@media (max-width: 560px) {
+  .caja { padding: 16px; }
+  .tabla { margin: 0 -16px; padding: 0 16px; }
+  .controles { margin-left: 0; }
+  .meta { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
 </style>
 </head>
 <body>
 <div class="envoltura">
   <header>
-    <h1>Detector de ataques HTTP</h1>
-    <span class="sub" id="sub">nginx → XGBoost → LLM local</span>
-    <div class="chips"><span class="chip" id="modo">modo —</span><span class="chip" id="umbral">τ —</span><span class="chip vivo" id="vivo">conectando</span></div>
+    <div class="marca">
+      <div class="logo" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12.5l2.4 2.4 4.6-5"/></svg>
+      </div>
+      <div>
+        <h1>Detector de ataques HTTP</h1>
+        <div class="sub" id="sub">BookStack · nginx → XGBoost → LLM local</div>
+      </div>
+    </div>
+    <div class="controles">
+      <span class="chip" id="modo">Modo <b>—</b></span>
+      <span class="chip" id="umbral">Umbral τ <b>—</b></span>
+      <span class="chip" id="vivo"><span class="punto"></span><span id="vivo-t">Conectando…</span></span>
+      <button class="btn-icono" id="btn-tema" type="button" aria-label="Cambiar entre tema claro y oscuro" title="Cambiar tema">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
   </header>
 
-  <section class="kpis" aria-label="Totales">
-    <div class="kpi"><div class="et">Peticiones analizadas</div><div class="v" id="k-total">0</div><div class="n" id="k-total-n">desde que arrancó el panel</div></div>
-    <div class="kpi"><div class="et">Legítimas según XGBoost</div><div class="v" id="k-leg">0</div><div class="n" id="k-leg-n">no pasan al LLM</div></div>
-    <div class="kpi"><div class="et">Enviadas al LLM</div><div class="v" id="k-env">0</div><div class="n" id="k-env-n">—</div></div>
-    <div class="kpi"><div class="et">Alertas confirmadas</div><div class="v" id="k-ale">0</div><div class="n">con tipo y explicación</div></div>
-    <div class="kpi"><div class="et">Falsas alarmas evitadas</div><div class="v" id="k-des">0</div><div class="n">XGBoost marcó, el LLM descartó</div></div>
-    <div class="kpi"><div class="et">Latencia media</div><div class="v" id="k-lat">—</div><div class="n" id="k-lat-n">XGBoost / LLM</div></div>
+  <section class="kpis" aria-label="Totales de la sesión">
+    <div class="kpi"><div class="et"><i style="background:var(--neutro)"></i>Peticiones analizadas</div><div class="v" id="k-total">0</div><div class="n">registradas por nginx</div></div>
+    <div class="kpi"><div class="et"><i style="background:var(--good)"></i>Legítimas</div><div class="v" id="k-leg">0</div><div class="medidor"><i id="m-leg" style="background:var(--good);width:0"></i></div><div class="n" id="k-leg-n">—</div></div>
+    <div class="kpi"><div class="et"><i style="background:var(--llm)"></i>Enviadas al LLM</div><div class="v" id="k-env">0</div><div class="medidor"><i id="m-env" style="background:var(--llm);width:0"></i></div><div class="n" id="k-env-n">—</div></div>
+    <div class="kpi critico"><div class="et"><i style="background:var(--crit)"></i>Alertas</div><div class="v" id="k-ale">0</div><div class="n">con tipo de ataque y explicación</div></div>
+    <div class="kpi"><div class="et"><i style="background:var(--warn)"></i>Falsas alarmas evitadas</div><div class="v" id="k-des">0</div><div class="n">XGBoost marcó, el LLM descartó</div></div>
+    <div class="kpi"><div class="et"><i style="background:var(--xgb)"></i>Latencia media</div>
+      <div class="lat"><span>XGBoost</span><b id="k-lat-ml">—</b><span>LLM</span><b id="k-lat-llm">—</b></div></div>
   </section>
 
-  <div class="fila">
-    <section class="caja">
-      <h2>Recorrido de las peticiones</h2>
-      <div class="flujo">
-        <div class="etapa"><b>nginx</b><div class="c" id="f-nginx">0</div><small>registro JSON</small></div>
-        <div class="flecha" aria-hidden="true">→</div>
-        <div class="etapa"><b>XGBoost</b><div class="c" id="f-ml">0</div><small id="f-tau">puntaje ≥ τ</small>
-          <div class="salidas"><span class="p-legitima" id="f-ml-leg">0 legítimas</span><span class="p-descartada" id="f-ml-sos">0 sospechosas</span></div></div>
-        <div class="flecha" aria-hidden="true">→</div>
-        <div class="etapa"><b id="f-llm-nom">LLM</b><div class="c" id="f-llm">0</div><small>confirma o descarta</small>
-          <div class="salidas"><span class="p-alerta" id="f-llm-ale">0 confirmadas</span><span class="p-descartada" id="f-llm-des">0 descartadas</span></div></div>
-        <div class="flecha" aria-hidden="true">→</div>
-        <div class="etapa"><b>Alertas</b><div class="c" id="f-ale">0</div><small>con explicación</small></div>
-      </div>
-    </section>
-    <section class="caja">
-      <h2>Última alerta</h2>
-      <div class="vacio" id="u-vacio">Todavía no hay alertas.</div>
-      <div class="ultima" id="ultima">
-        <div class="tipo" id="u-tipo"></div>
-        <div class="razon" id="u-razon"></div>
-        <code id="u-pet"></code>
-        <div class="meta" id="u-meta"></div>
-      </div>
+  <div class="rejilla">
+    <div class="pila">
+      <section class="caja" aria-labelledby="t-flujo">
+        <div class="caja-cab"><h2 id="t-flujo">Recorrido de las peticiones</h2><span class="nota">El grosor de cada banda es proporcional al número de peticiones</span></div>
+        <div class="lienzo" id="lienzo">
+          <svg id="sankey" role="img" aria-label="Diagrama de flujo de las peticiones"></svg>
+          <svg class="capa" id="particulas" aria-hidden="true"></svg>
+        </div>
+      </section>
+      <section class="caja" aria-labelledby="t-graf">
+        <div class="caja-cab"><h2 id="t-graf">Puntaje de XGBoost por petición</h2><span class="nota">Las más recientes a la derecha · pasa el cursor sobre un punto</span></div>
+        <div id="grafico"></div>
+        <div class="leyenda" aria-label="Leyenda">
+          <span><i style="background:var(--good)"></i>✓ Legítima</span>
+          <span><i style="background:var(--warn)"></i>↩ Descartada por el LLM</span>
+          <span><i style="background:var(--crit)"></i>⚠ Alerta</span>
+          <span><i style="background:var(--serious)"></i>? No confirmada</span>
+          <span><svg width="18" height="10" aria-hidden="true"><line x1="0" y1="5" x2="18" y2="5" style="stroke:var(--text-2);stroke-width:1.5;stroke-dasharray:5 3"/></svg>Umbral τ</span>
+        </div>
+      </section>
+    </div>
+    <section class="caja" aria-labelledby="t-al" id="caja-alerta">
+      <div class="caja-cab"><h2 id="t-al">Última alerta</h2><span class="nota" id="al-cuenta"></span></div>
+      <div id="alerta"></div>
     </section>
   </div>
 
-  <section class="caja">
-    <h2>Peticiones en tiempo real</h2>
+  <section class="caja" aria-labelledby="t-tab">
+    <div class="caja-cab">
+      <h2 id="t-tab">Peticiones en tiempo real</h2>
+      <div class="filtros" role="group" aria-label="Filtrar peticiones" id="filtros">
+        <button class="filtro on" data-f="todas" type="button">Todas <span class="c" id="c-todas">0</span></button>
+        <button class="filtro" data-f="alertas" type="button">Alertas <span class="c" id="c-alertas">0</span></button>
+        <button class="filtro" data-f="llm" type="button">Pasaron al LLM <span class="c" id="c-llm">0</span></button>
+        <button class="filtro" data-f="legitimas" type="button">Legítimas <span class="c" id="c-legitimas">0</span></button>
+      </div>
+    </div>
     <div class="tabla">
       <table>
-        <colgroup><col style="width:72px"><col style="width:76px"><col><col style="width:150px"><col style="width:30%"><col style="width:120px"><col style="width:180px"></colgroup>
-        <thead><tr><th>Hora</th><th>Id</th><th>Petición</th><th>Puntaje XGBoost</th><th>Veredicto del LLM</th><th>Latencia</th><th>Resultado</th></tr></thead>
-        <tbody id="filas"><tr><td colspan="7" class="vacio">Esperando peticiones…</td></tr></tbody>
+        <colgroup><col style="width:34px"><col style="width:76px"><col style="width:78px"><col><col style="width:150px"><col style="width:176px"><col style="width:28%"><col style="width:128px"></colgroup>
+        <thead><tr><th></th><th>Hora</th><th>Id</th><th>Petición</th><th>XGBoost</th><th>Resultado</th><th>Explicación del LLM</th><th>Latencia</th></tr></thead>
+        <tbody id="filas"><tr><td colspan="8" class="vacio-t">Esperando peticiones…</td></tr></tbody>
       </table>
     </div>
-    <div class="pie">La línea negra en cada barra es el umbral τ: por encima, la petición pasa al LLM. Se actualiza cada segundo.</div>
+    <div class="pie"><span>La marca vertical en cada barra es el umbral τ: por encima, la petición pasa al LLM.</span><span>Haz clic en una fila para ver el detalle.</span><span>Todo corre en 127.0.0.1.</span></div>
   </section>
 </div>
+<div id="tip" role="tooltip"></div>
 
 <script>
-if (new URLSearchParams(location.search).get("tema") === "claro") document.documentElement.dataset.theme = "light";
-const ETQ = { legitima: "✓ Legítima", descartada: "↩ Descartada por el LLM", alerta: "⚠ Alerta", no_confirmada: "? No confirmada" };
+"use strict";
 const $ = id => document.getElementById(id);
-let vistos = new Set(), primera = true, totalPrevio = -1;
+const raiz = document.documentElement;
 
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const ms = v => v == null ? "—" : v < 10 ? v.toFixed(1) + " ms" : Math.round(v).toLocaleString("es") + " ms";
-const pct = (a, b) => b ? Math.round(a / b * 100) + " %" : "—";
-const hora = ts => { try { return new Date(ts).toLocaleTimeString("es", { hour12: false }); } catch { return ""; } };
-const dec = s => { try { return decodeURIComponent(String(s).replace(/\+/g, " ")); } catch { return s; } };
+// ---------- tema: ?tema=claro|oscuro, luego la preferencia guardada, luego el sistema
+function aplicarTema(t) { if (t) raiz.dataset.theme = t; else delete raiz.dataset.theme; }
+const PARAM = new URLSearchParams(location.search).get("tema");
+let guardado = null;
+try { guardado = localStorage.getItem("tema-panel"); } catch {}
+aplicarTema(PARAM === "claro" ? "light" : PARAM === "oscuro" ? "dark" : guardado);
+$("btn-tema").addEventListener("click", () => {
+  const oscuro = raiz.dataset.theme ? raiz.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  const nuevo = oscuro ? "light" : "dark";
+  aplicarTema(nuevo);
+  try { localStorage.setItem("tema-panel", nuevo); } catch {}
+});
 
-function fila(e) {
-  const p = e.p_ml, tau = e.umbral ?? 0.5;
-  const punt = p == null ? '<span class="vacio">—</span>' :
-    `<div class="puntaje"><div class="barra"><i style="width:${(p * 100).toFixed(1)}%"></i><u style="left:${tau * 100}%"></u></div><span class="num">${p.toFixed(2)}</span></div>`;
-  const llm = e.llm ? `<div class="llm"><b>${esc(e.llm.tipo_ataque)}</b> · ${esc(e.llm.razon)}</div>` : '<span class="vacio">no se consultó</span>';
-  const lat = e.ms_llm != null ? `${ms(e.ms_ml)} + ${ms(e.ms_llm)}` : ms(e.ms_ml);
-  const limpio = e.body ? dec(e.body).replace(/_token=[^&]*&?/, "") : "";
-  const cuerpo = limpio ? `<br><span class="vacio">cuerpo: ${esc(limpio.slice(0, 90))}</span>` : "";
-  return `<td class="num">${hora(e.ts)}</td><td class="id"><code>${esc(e.id).slice(0, 10)}</code></td>` +
-    `<td><code>${esc(e.metodo)} ${esc(dec(e.uri).slice(0, 110))}</code>${cuerpo}</td><td>${punt}</td><td>${llm}</td>` +
-    `<td class="num">${lat}</td><td><span class="pill p-${e.veredicto}">${ETQ[e.veredicto] || e.veredicto}</span></td>`;
+// ---------- formato
+const nf = (v, d = 0) => Number(v).toLocaleString("es", { minimumFractionDigits: d, maximumFractionDigits: d });
+const ms = v => v == null ? "—" : v >= 1000 ? nf(v / 1000, 2) + " s" : v < 10 ? nf(v, 1) + " ms" : nf(v) + " ms";
+const pct = (a, b) => b ? nf(a / b * 100) + " %" : "—";
+const sc = p => p == null ? "—" : nf(p, 2);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const dec = s => { try { return decodeURIComponent(String(s ?? "").replace(/\+/g, " ")); } catch { return String(s ?? ""); } };
+const hora = ts => { const d = new Date(ts); return isNaN(d) ? "" : d.toLocaleTimeString("es", { hour12: false }); };
+const hace = ts => { const s = Math.max(0, Math.round((Date.now() - new Date(ts)) / 1000)); return s < 60 ? `hace ${s} s` : s < 3600 ? `hace ${Math.floor(s / 60)} min` : `hace ${Math.floor(s / 3600)} h`; };
+const clave = e => e.ts + "|" + e.id;
+const cuerpoLimpio = b => dec(b).replace(/(^|&)_token=[^&]*/g, "").replace(/(password=)[^&]*/gi, "$1••••••").replace(/^&/, "");
+const esAlerta = e => e.veredicto === "alerta" || e.veredicto === "no_confirmada";
+const pasoLLM = e => !!e.llm || e.ms_llm != null;
+
+const ICONO = {
+  legitima: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  descartada: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></svg>',
+  alerta: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5L2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.01"/></svg>',
+  no_confirmada: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.6 2.6 0 015 .9c0 1.7-2.5 2.3-2.5 3.8M12 17.3v.01"/></svg>',
+};
+const ETQ = { legitima: "Legítima", descartada: "Descartada por el LLM", alerta: "Alerta", no_confirmada: "No confirmada" };
+const pill = v => `<span class="pill p-${esc(v)}">${ICONO[v] || ""}${ETQ[v] || esc(v)}</span>`;
+const MODOS = { hibrida: "Cascada XGBoost + LLM", ml: "Solo XGBoost", llm: "Solo LLM" };
+
+// ---------- tooltip
+const tip = $("tip");
+function mostrarTip(html, x, y) {
+  tip.innerHTML = html; tip.classList.add("on");
+  const r = tip.getBoundingClientRect();
+  let l = x + 14, t = y + 14;
+  if (l + r.width > innerWidth - 8) l = x - r.width - 14;
+  if (t + r.height > innerHeight - 8) t = y - r.height - 14;
+  tip.style.left = Math.max(8, l) + "px"; tip.style.top = Math.max(8, t) + "px";
+}
+const ocultarTip = () => tip.classList.remove("on");
+
+// ---------- estado
+let eventos = [], resumen = null, totalPrevio = -1, primera = true, llmNombre = "LLM", tau = 0.5;
+let filtro = "todas", alertaSel = null;
+const abiertas = new Set(), vistos = new Set();
+
+// ======================================================================
+// Diagrama de flujo (Sankey)
+// ======================================================================
+const ORDEN = { nginx: 0, xgb: 1, llm: 2, alert: 3, desc: 4, leg: 5 };
+const COLX = { nginx: 10, xgb: 232, llm: 452, alert: 616, desc: 616, leg: 616 };
+const SK = { W: 790, nw: 12, top: 46, alto: 186, gap: 18 };
+const CLASE = { nginx: "n-neutro", xgb: "n-xgb", llm: "n-llm", alert: "n-crit", desc: "n-warn", leg: "n-good" };
+const COLOR = { alert: "var(--crit)", desc: "var(--warn)", leg: "var(--good)" };
+let geo = null;
+
+const finRuta = e => e.veredicto === "descartada" ? "desc" : e.veredicto === "legitima" ? "leg" : "alert";
+function ruta(e) {
+  const r = ["nginx"];
+  if (e.p_ml != null) r.push("xgb");
+  if (pasoLLM(e)) r.push("llm");
+  r.push(finRuta(e));
+  return r;
+}
+function nombreNodo(n) {
+  return { nginx: "nginx", xgb: "XGBoost", llm: "LLM", alert: "Alertas", desc: "Descartadas", leg: "Legítimas" }[n];
+}
+function subNodo(n, v, T) {
+  if (n === "nginx") return "registro JSON";
+  if (n === "xgb") return `puntaje ≥ ${nf(tau, 2)} → LLM`;
+  if (n === "llm") return llmNombre.length > 28 ? llmNombre.slice(0, 27) + "…" : llmNombre;
+  const extra = { alert: "con explicación", desc: "falsa alarma evitada", leg: "sin alerta" }[n];
+  return T ? `${pct(v, T)} · ${extra}` : extra;
+}
+
+function dibujarSankey() {
+  const vacio = !eventos.length;
+  const rep = (r, k) => Array.from({ length: k }, () => r);
+  const rutas = vacio
+    ? [...rep(["nginx", "xgb", "leg"], 6), ...rep(["nginx", "xgb", "llm", "alert"], 3), ...rep(["nginx", "xgb", "llm", "desc"], 1)]
+    : eventos.map(ruta);
+  const T = rutas.length;
+  const L = new Map(), val = {};
+  for (const r of rutas) {
+    for (let i = 0; i < r.length - 1; i++) {
+      const k = r[i] + ">" + r[i + 1];
+      if (!L.has(k)) L.set(k, { a: r[i], b: r[i + 1], v: 0 });
+      L.get(k).v++;
+    }
+    for (const n of r) val[n] = (val[n] || 0) + 1;
+  }
+  const finales = ["alert", "desc", "leg"].filter(n => val[n]);
+  const k = (SK.alto - SK.gap * (finales.length - 1)) / T;
+  const N = {};
+  let y = SK.top;
+  for (const n of finales) { const h = Math.max(val[n] * k, 3); N[n] = { x: COLX[n], y, h, v: val[n] }; y += h + SK.gap; }
+  const fondo = y - SK.gap;
+  for (const n of ["nginx", "xgb"]) if (val[n]) { const h = Math.max(val[n] * k, 3); N[n] = { x: COLX[n], y: SK.top + (fondo - SK.top - h) / 2, h, v: val[n] }; }
+  if (val.llm) {
+    const h = Math.max(val.llm * k, 3);
+    const primero = ["alert", "desc", "leg"].find(t => L.has("llm>" + t));
+    N.llm = { x: COLX.llm, y: N[primero].y, h, v: val.llm };
+  }
+  const links = [...L.values()];
+  const sal = {}, ent = {};
+  for (const l of [...links].sort((p, q) => ORDEN[p.b] - ORDEN[q.b])) {
+    const s = N[l.a], o = sal[l.a] || 0; l.sh = l.v / s.v * s.h; l.sy = s.y + o; sal[l.a] = o + l.sh;
+  }
+  for (const l of [...links].sort((p, q) => ORDEN[p.a] - ORDEN[q.a])) {
+    const t = N[l.b], o = ent[l.b] || 0; l.th = l.v / t.v * t.h; l.ty = t.y + o; ent[l.b] = o + l.th;
+  }
+
+  const H = Math.max(fondo, SK.top + SK.alto) + 28;
+  let s = "";
+  for (const l of links.sort((p, q) => ORDEN[p.b] - ORDEN[q.b])) {
+    const x0 = N[l.a].x + SK.nw, x1 = N[l.b].x, xm = (x0 + x1) / 2;
+    l.x0 = x0; l.x1 = x1;
+    const d = `M${x0},${l.sy}C${xm},${l.sy} ${xm},${l.ty} ${x1},${l.ty}L${x1},${l.ty + l.th}C${xm},${l.ty + l.th} ${xm},${l.sy + l.sh} ${x0},${l.sy + l.sh}Z`;
+    const cls = vacio ? "n-ghost" : l.b === "xgb" || l.b === "llm" ? CLASE[l.b] : CLASE[l.b];
+    const t = vacio ? "" : ` data-tip="${esc(`<div class='tt'>${nombreNodo(l.a)} → ${nombreNodo(l.b)}</div><div class='tl'>${l.v} ${l.v === 1 ? "petición" : "peticiones"} · ${pct(l.v, T)} del total</div>`)}"`;
+    s += `<path class="banda ${cls}" d="${d}"${t}/>`;
+  }
+  for (const [n, o] of Object.entries(N)) {
+    const cls = vacio ? "n-ghost" : CLASE[n];
+    s += `<rect class="nodo ${cls}" x="${o.x}" y="${o.y}" width="${SK.nw}" height="${o.h}" rx="3"/>`;
+  }
+  // etiquetas de nodos intermedios: encima del nodo
+  for (const n of ["nginx", "xgb", "llm"]) {
+    const o = N[n]; if (!o) continue;
+    const ancla = n === "nginx" ? "start" : "middle", x = n === "nginx" ? o.x : o.x + SK.nw / 2;
+    s += `<text x="${x}" y="${o.y - 24}" text-anchor="${ancla}"><tspan class="et-nodo">${nombreNodo(n)}</tspan><tspan class="et-num" dx="6">${vacio ? 0 : o.v}</tspan></text>`;
+    s += `<text class="et-sub" x="${x}" y="${o.y - 9}" text-anchor="${ancla}">${esc(subNodo(n, o.v, T))}</text>`;
+  }
+  // etiquetas de nodos finales: a la derecha, sin solaparse
+  let ultimo = -Infinity;
+  for (const n of finales) {
+    const o = N[n];
+    let cy = Math.max(o.y + o.h / 2, ultimo + 34);
+    ultimo = cy;
+    const x = o.x + SK.nw + 10;
+    s += `<text x="${x}" y="${cy - 3}"><tspan class="et-nodo">${nombreNodo(n)}</tspan><tspan class="et-num" dx="6">${vacio ? 0 : o.v}</tspan></text>`;
+    s += `<text class="et-sub" x="${x}" y="${cy + 13}">${esc(vacio ? subNodo(n, 0, 0) : subNodo(n, o.v, T))}</text>`;
+  }
+  if (vacio) s += `<text class="et-sub" x="${SK.W / 2 - 60}" y="${H - 4}" text-anchor="middle">Sin peticiones todavía: el diagrama se llena en vivo</text>`;
+  const svg = $("sankey");
+  svg.setAttribute("viewBox", `0 0 ${SK.W} ${H}`);
+  svg.innerHTML = s;
+  $("particulas").setAttribute("viewBox", `0 0 ${SK.W} ${H}`);
+  geo = vacio ? null : { L };
+}
+
+$("sankey").addEventListener("mousemove", ev => {
+  const t = ev.target.closest("[data-tip]");
+  if (t) mostrarTip(t.dataset.tip, ev.clientX, ev.clientY); else ocultarTip();
+});
+$("sankey").addEventListener("mouseleave", ocultarTip);
+
+// partícula que recorre la ruta de cada petición nueva
+const NS = "http://www.w3.org/2000/svg";
+const reducir = matchMedia("(prefers-reduced-motion: reduce)");
+function lanzar(e, retraso) {
+  if (!geo || reducir.matches) return;
+  const r = ruta(e), seg = [];
+  for (let i = 0; i < r.length - 1; i++) {
+    const l = geo.L.get(r[i] + ">" + r[i + 1]); if (!l) return;
+    seg.push([l.x0, l.sy + l.sh / 2, l.x1, l.ty + l.th / 2]);
+  }
+  const capa = $("particulas");
+  const c = document.createElementNS(NS, "circle");
+  const color = COLOR[finRuta(e)];
+  c.setAttribute("r", "5"); c.setAttribute("class", "particula"); c.style.fill = color; c.style.color = color; c.style.opacity = "0";
+  capa.appendChild(c);
+  const DUR = 700, total = DUR * seg.length;
+  let inicio = null;
+  function paso(t) {
+    if (inicio == null) inicio = t + retraso;
+    const tr = t - inicio;
+    if (tr < 0) { requestAnimationFrame(paso); return; }
+    const f = Math.min(tr / total, 1);
+    const i = Math.min(Math.floor(f * seg.length), seg.length - 1);
+    const u = f * seg.length - i, q = u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+    const [x0, y0, x1, y1] = seg[i], xm = (x0 + x1) / 2;
+    const b = (a, p1, p2, z) => (1 - q) ** 3 * a + 3 * (1 - q) ** 2 * q * p1 + 3 * (1 - q) * q * q * p2 + q ** 3 * z;
+    c.setAttribute("cx", b(x0, xm, xm, x1)); c.setAttribute("cy", b(y0, y0, y1, y1));
+    c.style.opacity = "1";
+    if (f < 1) { requestAnimationFrame(paso); return; }
+    c.remove();
+    const o = document.createElementNS(NS, "circle");
+    o.setAttribute("cx", x1); o.setAttribute("cy", y1); o.setAttribute("r", "4");
+    o.style.fill = "none"; o.style.stroke = color; o.style.strokeWidth = "2";
+    capa.appendChild(o);
+    o.animate([{ r: 4, opacity: .9 }, { r: 22, opacity: 0 }], { duration: 700, easing: "ease-out" }).onfinish = () => o.remove();
+  }
+  requestAnimationFrame(paso);
+}
+
+// ======================================================================
+// Gráfico de puntajes
+// ======================================================================
+let puntos = [];
+function dibujarGrafico() {
+  const cont = $("grafico");
+  const W = cont.clientWidth || 600, H = 200, m = { l: 34, r: 92, t: 10, b: 18 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  puntos = eventos.filter(e => e.p_ml != null).slice(-60);
+  const N = Math.max(puntos.length, 24);
+  const X = i => m.l + (i + .5) * iw / N, Y = p => m.t + (1 - p) * ih;
+  let s = `<rect class="zona" x="${m.l}" y="${m.t}" width="${iw}" height="${Y(tau) - m.t}"/>`;
+  for (const v of [0, 1]) s += `<line class="rejilla-l" x1="${m.l}" x2="${m.l + iw}" y1="${Y(v)}" y2="${Y(v)}"/><text class="eje" x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`;
+  s += `<line class="tau" x1="${m.l}" x2="${m.l + iw}" y1="${Y(tau)}" y2="${Y(tau)}"/>`;
+  s += `<text class="eje" x="${m.l - 8}" y="${Y(tau) + 4}" text-anchor="end">${nf(tau, 1)}</text>`;
+  s += `<text class="eje-z" x="${m.l + iw + 10}" y="${Y(tau) - 22}">↑ Pasa al LLM</text>`;
+  s += `<text class="eje-z" x="${m.l + iw + 10}" y="${Y(tau) + 30}">↓ Legítima</text>`;
+  s += `<text class="eje" x="${m.l + iw + 10}" y="${Y(tau) + 4}" style="fill:var(--text-2)">τ = ${nf(tau, 2)}</text>`;
+  puntos.forEach((e, i) => {
+    s += `<line class="tallo" x1="${X(i)}" x2="${X(i)}" y1="${Y(0)}" y2="${Y(e.p_ml)}"/>`;
+  });
+  puntos.forEach((e, i) => {
+    s += `<circle class="dot d-${esc(e.veredicto)}" data-i="${i}" cx="${X(i)}" cy="${Y(e.p_ml)}" r="5.5"/>`;
+  });
+  if (!puntos.length) {
+    const msg = eventos.length ? "Este modo no usa XGBoost" : "Sin peticiones todavía";
+    s += `<text class="eje" x="${m.l + iw / 2}" y="${m.t + ih / 2 + 30}" text-anchor="middle">${msg}</text>`;
+  }
+  s += `<rect id="g-hit" x="${m.l}" y="0" width="${iw}" height="${H}" fill="transparent"/>`;
+  cont.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="Puntaje de XGBoost de las últimas ${puntos.length} peticiones">${s}</svg>`;
+  const hit = $("g-hit");
+  let activo = -1;
+  const marcar = i => {
+    if (i === activo) return;
+    cont.querySelector(`.dot[data-i="${activo}"]`)?.classList.remove("on");
+    activo = i;
+    cont.querySelector(`.dot[data-i="${i}"]`)?.classList.add("on");
+  };
+  hit.addEventListener("mousemove", ev => {
+    const r = cont.getBoundingClientRect();
+    const i = Math.floor((ev.clientX - r.left - m.l) / (iw / N));
+    const e = puntos[i];
+    if (!e) { marcar(-1); ocultarTip(); return; }
+    marcar(i);
+    const det = e.llm ? `<div class="tl">${tipoLLM(e)} · ${esc(e.llm.razon)}</div>` : "";
+    mostrarTip(`<div class="tt">${esc(e.id)} · XGBoost ${sc(e.p_ml)}</div><div class="tl mono">${esc(e.metodo)} ${esc(dec(e.uri).slice(0, 80))}</div><div style="margin:6px 0 2px">${pill(e.veredicto)}</div>${det}`, ev.clientX, ev.clientY);
+  });
+  hit.addEventListener("mouseleave", () => { marcar(-1); ocultarTip(); });
+  hit.addEventListener("click", ev => {
+    const r = cont.getBoundingClientRect();
+    const e = puntos[Math.floor((ev.clientX - r.left - m.l) / (iw / N))];
+    if (e) abrirFila(clave(e));
+  });
+  hit.style.cursor = "pointer";
+}
+new ResizeObserver(() => dibujarGrafico()).observe($("grafico"));
+
+// ======================================================================
+// Tarjeta de alerta
+// ======================================================================
+function dibujarAlerta() {
+  const alertas = eventos.filter(esAlerta).reverse();
+  $("al-cuenta").textContent = alertas.length ? `${alertas.length} en total` : "";
+  const caja = $("alerta");
+  if (!alertas.length) {
+    caja.innerHTML = `<div class="alerta-vacia"><div><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12.5l2.4 2.4 4.6-5"/></svg><div style="margin-top:8px;font-weight:600;color:var(--text-2)">Sin alertas</div><div>Cuando el LLM confirme un ataque aparecerá aquí con su explicación.</div></div></div>`;
+    return;
+  }
+  const a = alertas.find(e => clave(e) === alertaSel) || alertas[0];
+  const tipo = a.llm ? a.llm.tipo_ataque : "Detectado por XGBoost";
+  const razon = a.llm ? a.llm.razon : "Modo solo XGBoost: no hay explicación del LLM.";
+  const p = a.p_ml;
+  const barra = p == null ? "—" : `<div class="puntaje" style="padding-top:2px"><div class="barra"><i style="width:${(p * 100).toFixed(1)}%"></i><u style="left:${(a.umbral ?? tau) * 100}%"></u></div><span class="num">${sc(p)}</span></div>`;
+  const cuerpo = a.body ? cuerpoLimpio(a.body) : "";
+  let html = `<div class="al-cab">${pill(a.veredicto)}<span class="tenue num">${hora(a.ts)} · <span data-hace="${esc(a.ts)}">${hace(a.ts)}</span></span></div>
+    <p class="al-tipo">${esc(tipo)}</p>
+    <p class="al-razon">${esc(razon)}</p>
+    <div class="peticion"><span class="metodo m-${esc(a.metodo)}">${esc(a.metodo)}</span><code>${esc(dec(a.uri))}${cuerpo ? `<br><span class="tenue">${esc(cuerpo.slice(0, 160))}</span>` : ""}</code></div>
+    <div class="meta">
+      <div><span>Puntaje de XGBoost</span>${barra}</div>
+      <div><span>Tiempo del LLM</span><b>${ms(a.ms_llm)}</b></div>
+      <div><span>IP de origen</span><b class="mono">${esc(a.ip || "—")}</b></div>
+      <div><span>Id de la petición</span><b class="mono">${esc(a.id || "—")}</b></div>
+    </div>`;
+  if (alertas.length > 1) {
+    html += `<div class="previas"><h3>Alertas recientes</h3>` + alertas.slice(0, 6).map(e =>
+      `<button type="button" class="previa${e === a ? " sel" : ""}" data-k="${esc(clave(e))}"><i></i><span class="t">${esc(e.llm ? e.llm.tipo_ataque : "XGBoost")}</span><span class="h mono">${esc(e.id)}</span><span class="h">${hora(e.ts)}</span></button>`).join("") + `</div>`;
+  }
+  caja.innerHTML = html;
+}
+$("alerta").addEventListener("click", ev => {
+  const b = ev.target.closest(".previa"); if (!b) return;
+  alertaSel = b.dataset.k; dibujarAlerta();
+});
+
+// ======================================================================
+// Tabla
+// ======================================================================
+// En las descartadas el LLM puede nombrar un tipo aunque no alerte: se aclara para no confundirlo con una alerta
+function tipoLLM(e) {
+  const t = String(e.llm.tipo_ataque ?? "");
+  if (e.veredicto !== "descartada") return `<b>${esc(t)}</b>`;
+  return /^(ninguno|none)?$/i.test(t.trim()) ? "<b>Sin ataque</b>" : `<b>Sin alerta</b> <span class="tenue">(sospecha: ${esc(t)})</span>`;
+}
+const FILTROS = { todas: () => true, alertas: esAlerta, llm: pasoLLM, legitimas: e => e.veredicto === "legitima" };
+
+function filaHTML(e, nueva) {
+  const k = clave(e), abierta = abiertas.has(k);
+  const p = e.p_ml, t = e.umbral ?? tau;
+  const punt = p == null ? '<span class="tenue">—</span>' :
+    `<div class="puntaje"><div class="barra"><i style="width:${(p * 100).toFixed(1)}%"></i><u style="left:${t * 100}%"></u></div><span class="num">${sc(p)}</span></div>`;
+  const llm = e.llm ? `<div class="explica">${tipoLLM(e)} · ${esc(e.llm.razon)}</div>`
+    : `<span class="tenue">${p != null && p < t ? "No se consultó: puntaje bajo τ" : "No se consultó"}</span>`;
+  const lat = e.ms_llm != null ? `${ms(e.ms_ml)} <span class="tenue">+</span> ${ms(e.ms_llm)}` : ms(e.ms_ml);
+  const cuerpo = e.body ? cuerpoLimpio(e.body) : "";
+  const uri = dec(e.uri);
+  let h = `<tr class="ev${abierta ? " abierta" : ""}${nueva ? " nueva" : ""}" data-k="${esc(k)}" tabindex="0" aria-expanded="${abierta}">
+    <td><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></td>
+    <td class="num">${hora(e.ts)}</td>
+    <td><code>${esc(String(e.id ?? "").slice(0, 10))}</code></td>
+    <td><div class="pet"><span class="metodo m-${esc(e.metodo)}">${esc(e.metodo)}</span><div style="min-width:0"><code title="${esc(uri)}">${esc(uri)}</code>${cuerpo ? `<div class="cuerpo mono">${esc(cuerpo)}</div>` : ""}</div></div></td>
+    <td>${punt}</td>
+    <td>${pill(e.veredicto)}</td>
+    <td>${llm}</td>
+    <td class="num">${lat}</td></tr>`;
+  if (abierta) {
+    h += `<tr class="detalle"><td colspan="8"><div class="det">
+      <div class="ancho"><span>Petición completa</span><code>${esc(e.metodo)} ${esc(uri)}</code></div>
+      ${cuerpo ? `<div class="ancho"><span>Cuerpo (token y contraseña ocultos)</span><code>${esc(cuerpo)}</code></div>` : ""}
+      ${e.llm ? `<div class="ancho"><span>Respuesta del LLM · ${esc(e.llm_nombre || llmNombre)}</span>${tipoLLM(e)} — ${esc(e.llm.razon)}</div>` : ""}
+      <div><span>Puntaje de XGBoost</span><b class="num">${sc(p)}</b> <span class="tenue" style="display:inline">${p == null ? "" : p >= t ? `≥ τ (${nf(t, 2)}) → pasa al LLM` : `< τ (${nf(t, 2)}) → legítima`}</span></div>
+      <div><span>Latencia</span><b class="num">XGBoost ${ms(e.ms_ml)}${e.ms_llm != null ? ` · LLM ${ms(e.ms_llm)}` : ""}</b></div>
+      <div><span>Respuesta de BookStack</span><b class="num">HTTP ${esc(e.status ?? "—")}</b></div>
+      <div><span>IP de origen</span><b class="mono">${esc(e.ip || "—")}</b></div>
+    </div></td></tr>`;
+  }
+  return h;
+}
+
+function dibujarTabla(conNuevas) {
+  for (const [f, fn] of Object.entries(FILTROS)) $("c-" + f).textContent = eventos.filter(fn).length;
+  const lista = eventos.filter(FILTROS[filtro]).reverse().slice(0, 100);
+  const tb = $("filas");
+  if (!lista.length) {
+    tb.innerHTML = `<tr><td colspan="8" class="vacio-t">${eventos.length ? "Ninguna petición con este filtro." : "Esperando peticiones…"}</td></tr>`;
+    return;
+  }
+  tb.innerHTML = lista.map(e => {
+    const k = clave(e), nueva = conNuevas && !vistos.has(k);
+    return filaHTML(e, nueva);
+  }).join("");
+}
+
+function abrirFila(k) {
+  abiertas.add(k);
+  if (!eventos.some(e => clave(e) === k && FILTROS[filtro](e))) { filtro = "todas"; marcarFiltro(); }
+  dibujarTabla(false);
+  document.querySelector(`tr.ev[data-k="${CSS.escape(k)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+$("filas").addEventListener("click", ev => {
+  const tr = ev.target.closest("tr.ev"); if (!tr) return;
+  const k = tr.dataset.k;
+  abiertas.has(k) ? abiertas.delete(k) : abiertas.add(k);
+  dibujarTabla(false);
+});
+$("filas").addEventListener("keydown", ev => {
+  if ((ev.key === "Enter" || ev.key === " ") && ev.target.matches("tr.ev")) { ev.preventDefault(); ev.target.click(); }
+});
+function marcarFiltro() { for (const b of document.querySelectorAll(".filtro")) b.classList.toggle("on", b.dataset.f === filtro); }
+$("filtros").addEventListener("click", ev => {
+  const b = ev.target.closest(".filtro"); if (!b) return;
+  filtro = b.dataset.f; marcarFiltro(); dibujarTabla(false);
+});
+
+// ======================================================================
+// KPIs y ciclo de actualización
+// ======================================================================
+function dibujarKpis() {
+  const R = resumen, T = R.total, alertas = R.alerta + R.no_confirmada;
+  $("k-total").textContent = nf(T);
+  $("k-leg").textContent = nf(R.legitima);
+  $("m-leg").style.width = T ? (R.legitima / T * 100) + "%" : "0";
+  $("k-leg-n").textContent = T ? `${pct(R.legitima, T)} del tráfico, sin alerta` : "—";
+  $("k-env").textContent = nf(R.enviadas_llm);
+  $("m-env").style.width = T ? (R.enviadas_llm / T * 100) + "%" : "0";
+  $("k-env-n").textContent = T ? `${pct(R.enviadas_llm, T)} del tráfico` : "—";
+  $("k-ale").textContent = nf(alertas);
+  $("k-des").textContent = nf(R.descartada);
+  $("k-lat-ml").textContent = ms(R.ms_ml);
+  $("k-lat-llm").textContent = ms(R.ms_llm);
+}
+
+function cabecera() {
+  const u = eventos[eventos.length - 1];
+  if (!u) return;
+  llmNombre = u.llm_nombre || "LLM";
+  tau = u.umbral ?? 0.5;
+  $("modo").innerHTML = `Modo <b>${esc(MODOS[u.modo] || u.modo)}</b>`;
+  $("umbral").innerHTML = `Umbral τ <b>${nf(tau, 2)}</b>`;
+  $("sub").textContent = `BookStack · nginx → XGBoost → ${llmNombre}`;
 }
 
 async function actualizar() {
+  let d;
   try {
     const r = await fetch("/api/eventos", { cache: "no-store" });
-    const d = await r.json();
-    $("vivo").textContent = "en vivo"; $("vivo").classList.remove("caido");
-    pintar(d);
+    d = await r.json();
+    $("vivo").classList.remove("caido");
+    $("vivo-t").textContent = "En vivo · " + new Date().toLocaleTimeString("es", { hour12: false });
   } catch {
-    $("vivo").textContent = "sin conexión"; $("vivo").classList.add("caido");
+    $("vivo").classList.add("caido"); $("vivo-t").textContent = "Sin conexión";
+    return;
   }
-}
-
-function pintar(d) {
-  const R = d.resumen, ev = d.eventos;
-  const ult = ev[ev.length - 1];
-  if (ult) {
-    $("modo").textContent = "modo " + ult.modo;
-    $("umbral").textContent = "τ = " + ult.umbral;
-    $("sub").textContent = `BookStack · nginx → XGBoost → ${ult.llm_nombre}`;
-    $("f-llm-nom").textContent = ult.llm_nombre;
-    $("f-tau").textContent = `puntaje ≥ ${ult.umbral} pasa al LLM`;
-  }
-  const alertas = R.alerta + R.no_confirmada;
-  $("k-total").textContent = R.total;
-  $("k-leg").textContent = R.legitima;
-  $("k-leg-n").textContent = `${pct(R.legitima, R.total)} del tráfico, sin consultar al LLM`;
-  $("k-env").textContent = R.enviadas_llm;
-  $("k-env-n").textContent = `${pct(R.enviadas_llm, R.total)} del tráfico`;
-  $("k-ale").textContent = alertas;
-  $("k-des").textContent = R.descartada;
-  $("k-lat").textContent = R.ms_llm != null ? ms(R.ms_llm) : ms(R.ms_ml);
-  $("k-lat-n").textContent = `XGBoost ${ms(R.ms_ml)} · LLM ${ms(R.ms_llm)}`;
-  $("f-nginx").textContent = R.total;
-  $("f-ml").textContent = R.total;
-  $("f-ml-leg").textContent = `${R.legitima} legítimas`;
-  $("f-ml-sos").textContent = `${R.enviadas_llm} sospechosas`;
-  $("f-llm").textContent = R.enviadas_llm;
-  $("f-llm-ale").textContent = `${alertas} confirmadas`;
-  $("f-llm-des").textContent = `${R.descartada} descartadas`;
-  $("f-ale").textContent = alertas;
-
-  const a = [...ev].reverse().find(e => e.veredicto === "alerta" || e.veredicto === "no_confirmada");
-  if (a) {
-    $("u-vacio").style.display = "none"; $("ultima").classList.add("hay");
-    $("u-tipo").textContent = "⚠ " + a.llm.tipo_ataque;
-    $("u-razon").textContent = a.llm.razon;
-    $("u-pet").textContent = `${a.metodo} ${dec(a.uri)}`;
-    $("u-meta").textContent = `id ${a.id} · IP ${a.ip} · XGBoost ${a.p_ml != null ? (a.p_ml * 100).toFixed(1) + " %" : "—"} · LLM ${ms(a.ms_llm)} · ${hora(a.ts)}`;
-  }
-
-  const cuerpo = $("filas");
-  if (!ev.length || d.total === totalPrevio) return;
+  for (const el of document.querySelectorAll("[data-hace]")) el.textContent = hace(el.dataset.hace);
+  if (d.total === totalPrevio) return;
+  if (d.total < totalPrevio) { vistos.clear(); abiertas.clear(); alertaSel = null; }
   totalPrevio = d.total;
-  const html = [...ev].reverse().slice(0, 60).map(e => {
-    const clave = e.ts + e.id;
-    const nueva = !primera && !vistos.has(clave);
-    vistos.add(clave);
-    return `<tr class="${nueva ? "nueva" : ""}">${fila(e)}</tr>`;
-  }).join("");
-  cuerpo.innerHTML = html;
+  eventos = d.eventos; resumen = d.resumen;
+  const nuevas = primera ? [] : eventos.filter(e => !vistos.has(clave(e)));
+  cabecera();
+  dibujarKpis();
+  dibujarSankey();
+  dibujarGrafico();
+  if (nuevas.some(esAlerta)) alertaSel = null;
+  dibujarAlerta();
+  dibujarTabla(!primera);
+  nuevas.slice(-8).forEach((e, i) => lanzar(e, i * 280));
+  for (const e of eventos) vistos.add(clave(e));
   primera = false;
 }
 
+dibujarSankey();
+dibujarGrafico();
+dibujarAlerta();
 actualizar();
 setInterval(actualizar, 1000);
 </script>
